@@ -1,0 +1,47 @@
+version: '3'
+
+services: 
+
+  app:
+    build: 
+      context: node
+    container_name: app
+    entrypoint: dockerize -wait tcp://db:3306 -timeout 120s docker-entrypoint.sh
+    command: bash -c "npm install mysql2 express --save && node index.js"
+    volumes: 
+      - ./node:/usr/src/app
+    tty: true
+    depends_on: 
+      - db
+    networks: 
+      - node-network
+
+  db:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: db
+    restart: always
+    tty: true
+    volumes: 
+      # - ./mysql/CreateTable.sql:/docker-entrypoint-initdb.d/CreateTable.sql
+      - ./mysql/mysql:/var/lib/mysql
+    environment: 
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root
+    networks: 
+      - node-network
+
+  nginx:
+    build: 
+      context: ./nginx
+    container_name: nginx
+    depends_on: 
+      - app
+    networks: 
+      - node-network
+    ports: 
+      - "80:80"
+
+networks: 
+  node-network:
+    driver: bridge      
